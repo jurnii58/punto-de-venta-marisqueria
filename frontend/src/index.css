@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #F3E4D4;
+  --color-brand-header: #0B525B;
+  --color-brand-primary: #E8912E;
+  --color-brand-secondary: #5CA8B5;
+  --color-brand-text: #0B525B;
+}
+
+:root {
+  font-family: 'Outfit', sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #F3E4D4; /* Fondo Principal */
+  color: #0B525B; /* Texto Principal */
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Clases útiles personalizadas para efectos de vidrio claro */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(11, 82, 91, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(11, 82, 91, 0.05);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(11, 82, 91, 0.06);
+}
