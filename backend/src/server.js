@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import http from 'http';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import Table from './models/Table.js';
@@ -366,6 +367,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 
+console.log('--- VERIFICACIÓN DEL FRONTEND ---');
+console.log('Buscando archivos del frontend en:', frontendDistPath);
+if (fs.existsSync(frontendDistPath)) {
+  console.log('✓ Carpeta frontend/dist encontrada.');
+  const indexHtmlPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexHtmlPath)) {
+    console.log('✓ Archivo index.html encontrado.');
+  } else {
+    console.warn('⚠ ADVERTENCIA: index.html NO se encuentra en la carpeta frontend/dist.');
+  }
+} else {
+  console.error('✗ ERROR: La carpeta frontend/dist NO existe. Verifica que la compilación se haya ejecutado en Render.');
+}
+console.log('---------------------------------');
+
 app.use(express.static(frontendDistPath));
 
 // Cualquier otra ruta no manejada por la API debe devolver el frontend (SPA)
@@ -373,7 +389,12 @@ app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) {
     return next();
   }
-  res.sendFile(path.join(frontendDistPath, 'index.html'));
+  const indexHtmlPath = path.join(frontendDistPath, 'index.html');
+  if (fs.existsSync(indexHtmlPath)) {
+    res.sendFile(indexHtmlPath);
+  } else {
+    res.status(404).send(`Error: El frontend no está compilado. Archivo no encontrado en: ${indexHtmlPath}`);
+  }
 });
 
 // Iniciar el servidor con soporte para WebSockets
