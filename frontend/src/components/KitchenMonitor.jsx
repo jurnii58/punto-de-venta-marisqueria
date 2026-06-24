@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Fish, RefreshCw, Clock, Flame, Snowflake, GlassWater, CheckCircle, Play, Droplet, Wave } from 'lucide-react';
+import { Fish, RefreshCw, Clock, Flame, Snowflake, GlassWater, CheckCircle, Play, Droplet, Waves } from 'lucide-react';
 import { io as ioClient } from 'socket.io-client';
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  return `http://${window.location.hostname}:5000/api`;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return `http://${window.location.hostname}:5000/api`;
+  }
+  return `${window.location.origin}/api`;
 };
 const API_URL = getApiUrl();
-const SOCKET_URL = API_URL.replace('/api', '');
+const SOCKET_URL = API_URL.startsWith('http') ? API_URL.replace('/api', '') : window.location.origin;
 
 // Función sintetizadora de audio para reproducir un timbre de cocina agradable ("ding-ding")
 const playKitchenBell = () => {
@@ -311,7 +314,7 @@ export default function KitchenMonitor() {
                     item.status === 'en preparación' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                   }`}>
                     {item.status === 'en preparación' ? (
-                      <Wave className="w-3.5 h-3.5 animate-pulse" />
+                      <Waves className="w-3.5 h-3.5 animate-pulse" />
                     ) : (
                       <Clock className="w-3.5 h-3.5" />
                     )}

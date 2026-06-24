@@ -8,7 +8,10 @@ import {
 
 const getApiUrl = () => {
   if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  return `http://${window.location.hostname}:5000/api`;
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return `http://${window.location.hostname}:5000/api`;
+  }
+  return `${window.location.origin}/api`;
 };
 const API_URL = getApiUrl();
 

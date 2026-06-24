@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import http from 'http';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/db.js';
 import Table from './models/Table.js';
 import Ingredient from './models/Ingredient.js';
@@ -359,11 +361,26 @@ app.patch('/api/ingredients/:id/stock', protect, restrictTo('Admin', 'Gerente'),
   }
 });
 
+// Servir archivos estáticos del frontend React en producción/despliegue
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+
+app.use(express.static(frontendDistPath));
+
+// Cualquier otra ruta no manejada por la API debe devolver el frontend (SPA)
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
+});
+
 // Iniciar el servidor con soporte para WebSockets
 const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 initSocket(server, allowedOrigins);
 
 server.listen(PORT, () => {
-  console.log(`Servidor de desarrollo escuchando en el puerto ${PORT}`);
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
