@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es" class="notranslate" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate" />
+    <title>Marisquería El Tío Perro - POS</title>
+    
+    <!-- Tailwind CSS (Play CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Playfair+Display:ital,wght@0,600;0,800;1,700&display=swap" rel="stylesheet">
+    
+    <!-- PWA Manifest & App Config -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#0B525B">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    
+    <!-- Soporte de Instalación Nativa en Apple iOS (iPads/iPhones) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tío Perro POS">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-gradient-to-tr from-[#0F4C5C]/20 via-[#E5E9EC] to-[#E8912E]/10 min-h-screen text-slate-800 font-sans flex flex-col">
+    {% block content %}{% endblock %}
+</body>
+</html>

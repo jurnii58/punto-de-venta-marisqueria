@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  RefreshCw, Users, Utensils, Plus, Minus, Send, X, 
+  RefreshCw, Users, Fish, Anchor, Wave, Plus, Minus, Send, X, 
   ClipboardList, Check, UserPlus, UserMinus, Clock, Flame, 
   CheckCircle, XCircle, DollarSign, PlusCircle, GlassWater, 
-  LayoutGrid, AlertCircle, ClipboardPlus
+  AlertCircle, ClipboardPlus
 } from 'lucide-react';
 
-const API_URL = `http://${window.location.hostname}:5000/api`;
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  return `http://${window.location.hostname}:5000/api`;
+};
+const API_URL = getApiUrl();
 
 // Función para disparar vibración háptica suave en dispositivos móviles (si es soportado)
 const triggerHaptic = (duration = 30) => {
@@ -245,7 +249,8 @@ export default function TableMap() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div>
             <div className="flex items-center gap-3">
-              <span className="px-3 py-1 rounded-full bg-brand-secondary/15 text-brand-header text-xs font-bold uppercase tracking-widest border border-brand-secondary/20">
+              <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand-secondary/15 text-brand-header text-xs font-bold uppercase tracking-widest border border-brand-secondary/20">
+                <Fish className="w-3.5 h-3.5 text-brand-secondary" />
                 Meseros
               </span>
               {usingMockData && (
@@ -277,7 +282,7 @@ export default function TableMap() {
         {/* Panel de Estadísticas */}
         <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-brand-header/10">
           <div className="glass-card rounded-2xl p-4 text-center flex flex-col items-center justify-center">
-            <LayoutGrid className="w-5 h-5 text-brand-header mb-1 opacity-85" />
+            <Anchor className="w-5 h-5 text-brand-header mb-1 opacity-85" />
             <p className="text-xs text-brand-text/70 uppercase tracking-wider font-semibold">Sala Completa</p>
             <p className="text-2xl md:text-3xl font-extrabold text-brand-text mt-1">{totalTables} Mesas</p>
           </div>
@@ -367,8 +372,9 @@ export default function TableMap() {
                       : 'bg-emerald-50 border-2 border-emerald-500 text-emerald-750 shadow-emerald-900/10 hover:bg-emerald-100'
                   }`}
                 >
-                  <Utensils className="w-6 h-6 mb-1" />
-                  <span className="text-2xl font-black">{table.number}</span>
+                  <div className="absolute inset-0 rounded-full border-2 border-brand-secondary/10" />
+                  <Fish className="w-6 h-6 mb-1 z-10" />
+                  <span className="text-2xl font-black z-10">{table.number}</span>
                 </div>
               </div>
 

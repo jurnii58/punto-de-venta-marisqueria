@@ -6,7 +6,11 @@ import {
   LayoutGrid
 } from 'lucide-react';
 
-const API_URL = `http://${window.location.hostname}:5000/api`;
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  return `http://${window.location.hostname}:5000/api`;
+};
+const API_URL = getApiUrl();
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({

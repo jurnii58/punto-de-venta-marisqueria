@@ -11,7 +11,15 @@ function getApiUrl() {
   } catch (e) {
     console.error('[PWA SW] Error al parsear URL del service worker:', e);
   }
-  return `http://${self.location.hostname}:5000/api`;
+  
+  // Fallback inteligente según el dominio actual (local vs producción en la nube)
+  const isLocal = self.location.hostname === 'localhost' || 
+                  self.location.hostname === '127.0.0.1' || 
+                  /^[0-9.]+$/.test(self.location.hostname);
+  if (isLocal) {
+    return `http://${self.location.hostname}:5000/api`;
+  }
+  return `${self.location.origin}/api`;
 }
 
 // Helper para abrir o inicializar IndexedDB en el Service Worker
@@ -25,22 +33,6 @@ function openDB() {
       }
     };
     request.onsuccess = (event) => resolve(event.target.result);
-    request.onerror = (event) => reject(event.target.error);
-  });
-}
-
-// Guardar una comanda localmente
-async function saveOrderOffline(orderData, authHeader) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(STORE_NAME, 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.add({
-      data: orderData,
-      authHeader, // Almacenar token de autorización original
-      timestamp: Date.now()
-    });
-    request.onsuccess = () => resolve();
     request.onerror = (event) => reject(event.target.error);
   });
 }
@@ -115,62 +107,16 @@ self.addEventListener('activate', (event) => {
   console.log('[PWA SW] Service Worker activado.');
 });
 
-// Interceptar peticiones Fetch
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Capturar solicitudes POST de creación de comandas
-  if (url.pathname === '/api/orders' && event.request.method === 'POST') {
-    const authHeader = event.request.headers.get('Authorization');
-    
-    event.respondWith(
-      (async () => {
-        try {
-          // Intentar la petición normal en la red
-          const response = await fetch(event.request);
-          return response;
-        } catch (error) {
-          // Capturar falla de red y procesar offline
-          console.warn('[PWA SW] Servidor inaccesible. Guardando comanda en IndexedDB...', error);
-
-          try {
-            const reqClone = event.request.clone();
-            const orderData = await reqClone.json();
-
-            // Guardar comanda e inyectar cabecera de autenticación
-            await saveOrderOffline(orderData, authHeader);
-
-            // Registrar sincronización automática en segundo plano (si es compatible)
-            if ('sync' in self.registration) {
-              await self.registration.sync.register('sync-orders');
-            }
-
-            // Responder con éxito falso aceptado (202)
-            return new Response(
-              JSON.stringify({
-                offline: true,
-                message: 'Comanda guardada en la memoria local por falta de internet. Se enviará de forma automática al servidor al reconectarse.'
-              }),
-              {
-                status: 202,
-                headers: { 'Content-Type': 'application/json' }
-              }
-            );
-          } catch (dbError) {
-            return new Response(
-              JSON.stringify({ error: true, message: 'Error al escribir el pedido en el almacenamiento local.' }),
-              { status: 500, headers: { 'Content-Type': 'application/json' } }
-            );
-          }
-        }
-      })()
-    );
+// Sincronización en segundo plano oficial
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-orders') {
+    event.waitUntil(syncOrders());
   }
 });
 
-// Escuchar el evento Background Sync de Google Chrome/Edge/Firefox
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-orders') {
+// Escuchar mensajes (para disparar sincronización forzada desde frontend)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'FORCE_SYNC') {
     event.waitUntil(syncOrders());
   }
 });

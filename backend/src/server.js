@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import http from 'http';
 import connectDB from './config/db.js';
 import Table from './models/Table.js';
 import Ingredient from './models/Ingredient.js';
@@ -9,21 +12,58 @@ import User from './models/User.js';
 import Order from './models/Order.js';
 import Payment from './models/Payment.js';
 import { protect, restrictTo } from './middlewares/auth.js';
+import { initSocket } from './socket.js';
 
 // Cargar variables de entorno
 dotenv.config();
+
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET no está definido. Configura la variable de entorno JWT_SECRET antes de iniciar la aplicación.');
+  process.exit(1);
+}
 
 // Conectar a MongoDB
 connectDB();
 
 const app = express();
 
-// Middlewares
-app.use(cors());
+// Seguridad y CORS
+app.use(helmet());
+app.disable('x-powered-by');
+
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origen no permitido por CORS'));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 8,
+  message: { message: 'Demasiados intentos de autenticación. Intenta de nuevo más tarde.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // Función para inicializar mesas, insumos y platillos si la base de datos está vacía
 const seedDatabase = async () => {
+  if (process.env.SEED_DB !== 'true' && process.env.NODE_ENV !== 'development') {
+    console.log('Seed database deshabilitado en este entorno. Para habilitar, configure SEED_DB=true.');
+    return;
+  }
+
   try {
     // 1. Sembrar Mesas
     const tableCount = await Table.countDocuments();
@@ -139,7 +179,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 
 // Montar rutas en la aplicación Express
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 
 // Obtener todos los usuarios de personal (Solo Admin/Gerente)
 app.get('/api/auth/users', protect, restrictTo('Admin', 'Gerente'), async (req, res) => {
@@ -319,8 +359,11 @@ app.patch('/api/ingredients/:id/stock', protect, restrictTo('Admin', 'Gerente'),
   }
 });
 
-// Iniciar el servidor
+// Iniciar el servidor con soporte para WebSockets
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = http.createServer(app);
+initSocket(server, allowedOrigins);
+
+server.listen(PORT, () => {
   console.log(`Servidor de desarrollo escuchando en el puerto ${PORT}`);
 });

@@ -1,6 +1,11 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+const DEV_BYPASS_TOKENS = new Set(
+  (process.env.DEV_AUTH_TOKENS || 'mesero_auth_token,placeholder_token,cajero_auth_token').split(',').map(t => t.trim()).filter(Boolean)
+);
+const allowDevBypass = process.env.NODE_ENV !== 'production';
+
 // Middleware para proteger rutas mediante autenticación JWT
 export const protect = async (req, res, next) => {
   try {
@@ -15,8 +20,7 @@ export const protect = async (req, res, next) => {
       return res.status(401).json({ message: 'No estás autenticado. Por favor inicia sesión para acceder.' });
     }
 
-    // Bypass de desarrollo para tokens simulados de la demo
-    if (['mesero_auth_token', 'placeholder_token', 'cajero_auth_token'].includes(token)) {
+    if (allowDevBypass && DEV_BYPASS_TOKENS.has(token)) {
       req.user = {
         _id: '60c72b2f9b1d8b2bad000001',
         name: 'Personal Demo',
@@ -25,9 +29,14 @@ export const protect = async (req, res, next) => {
       };
       return next();
     }
-    
+
+    // Verificar que exista la configuración del secreto
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ message: 'Configuración inválida del servidor: JWT_SECRET no definido.' });
+    }
+
     // Verificar token JWT
-    const secret = process.env.JWT_SECRET || 'secret_marisqueria_tio_perro_dev_key';
     const decoded = jwt.verify(token, secret);
     
     // Comprobar si el usuario aún existe en la base de datos

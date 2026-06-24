@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChefHat, RefreshCw, Clock, Flame, Snowflake, GlassWater, CheckCircle, Play } from 'lucide-react';
+import { Fish, RefreshCw, Clock, Flame, Snowflake, GlassWater, CheckCircle, Play, Droplet, Wave } from 'lucide-react';
+import { io as ioClient } from 'socket.io-client';
 
-const API_URL = `http://${window.location.hostname}:5000/api`;
+const getApiUrl = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  return `http://${window.location.hostname}:5000/api`;
+};
+const API_URL = getApiUrl();
+const SOCKET_URL = API_URL.replace('/api', '');
 
 // Función sintetizadora de audio para reproducir un timbre de cocina agradable ("ding-ding")
 const playKitchenBell = () => {
@@ -105,8 +111,27 @@ export default function KitchenMonitor() {
   // Sincronizar y consultar pedidos periódicamente
   useEffect(() => {
     fetchOrders();
+
+    // Conexión WebSocket (socket.io) para actualizaciones en tiempo real
+    let socket = null;
+    try {
+      socket = ioClient(SOCKET_URL, { transports: ['websocket'] });
+      socket.on('connect', () => console.log('Socket conectado a', SOCKET_URL));
+      socket.on('orders', (data) => {
+        // Reemplazar la lista completa de pedidos con lo enviado por el servidor
+        setOrders(data);
+      });
+    } catch (err) {
+      console.warn('No fue posible conectar via WebSocket:', err);
+    }
+
     const interval = setInterval(fetchOrders, 5000); // Auto-refresco cada 5 segundos
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (socket) {
+        socket.disconnect();
+      }
+    };
   }, []);
 
   // Actualizar el estado de preparación de un platillo en el backend
@@ -204,7 +229,7 @@ export default function KitchenMonitor() {
       <div className="glass-panel rounded-3xl p-6 mb-8 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 rounded-2xl bg-brand-primary/10 text-brand-primary">
-            <ChefHat className="w-8 h-8" />
+            <Fish className="w-8 h-8" />
           </div>
           <div>
             <h2 className="text-2xl font-black text-brand-header">Monitor de Cocina y Barra</h2>
@@ -226,7 +251,7 @@ export default function KitchenMonitor() {
       <div className="flex border-b border-brand-header/10 mb-8 gap-2">
         {['Barra Fría', 'Cocina Caliente', 'Bebidas'].map(area => {
           const areaIcons = {
-            'Barra Fría': <Snowflake className="w-4 h-4 text-sky-650" />,
+            'Barra Fría': <Droplet className="w-4 h-4 text-sky-650" />,
             'Cocina Caliente': <Flame className="w-4 h-4 text-orange-655" />,
             'Bebidas': <GlassWater className="w-4 h-4 text-[#5CA8B5]" />
           };
@@ -286,7 +311,7 @@ export default function KitchenMonitor() {
                     item.status === 'en preparación' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'
                   }`}>
                     {item.status === 'en preparación' ? (
-                      <Flame className="w-3.5 h-3.5 animate-pulse" />
+                      <Wave className="w-3.5 h-3.5 animate-pulse" />
                     ) : (
                       <Clock className="w-3.5 h-3.5" />
                     )}

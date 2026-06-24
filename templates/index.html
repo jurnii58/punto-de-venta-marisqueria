@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<!-- Navbar / Header Principal -->
+<header class="bg-[#0B525B] text-white shadow-xl px-4 py-4 md:px-8 flex flex-col md:flex-row justify-between items-center gap-4 sticky top-0 z-40">
+    <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-white/10 rounded-xl">
+            <i data-lucide="compass" class="w-6 h-6 animate-spin-slow text-[#E8912E]"></i>
+        </div>
+        <div>
+            <h1 class="text-xl font-black tracking-tight font-serif flex items-center gap-1.5">
+                El Tío Perro <span class="text-xs px-2 py-0.5 bg-[#E8912E] rounded-md font-sans font-bold">POS</span>
+            </h1>
+            <p id="userInfo" class="text-[11px] text-white/70 font-semibold uppercase tracking-wider mt-0.5"></p>
+        </div>
+    </div>
+
+    <!-- Menú de Pestañas de Navegación -->
+    <nav id="navTabs" class="flex flex-wrap gap-1 bg-white/15 p-1 rounded-2xl border border-white/10 text-xs md:text-sm font-bold">
+        <button onclick="switchTab('waiter')" id="tabBtn-waiter" class="tab-btn px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-white/10">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i> Mesas
+        </button>
+        <button onclick="switchTab('kitchen')" id="tabBtn-kitchen" class="tab-btn px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-white/10">
+            <i data-lucide="chef-hat" class="w-4 h-4"></i> Cocina
+        </button>
+        <button onclick="switchTab('cashier')" id="tabBtn-cashier" class="tab-btn px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-white/10">
+            <i data-lucide="dollar-sign" class="w-4 h-4"></i> Caja
+        </button>
+        <button onclick="switchTab('admin')" id="tabBtn-admin" class="tab-btn px-4 py-2 rounded-xl transition flex items-center gap-1.5 hover:bg-white/10">
+            <i data-lucide="sliders" class="w-4 h-4"></i> Admin
+        </button>
+    </nav>
+
+    <!-- Botón de Salir -->
+    <button onclick="handleLogout()" class="px-4 py-2 bg-rose-600/25 hover:bg-rose-600/40 text-rose-250 border border-rose-500/20 rounded-xl transition text-xs font-black flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="log-out" class="w-4 h-4"></i> Salir
+    </button>
+</header>
+
+<!-- Notificación Global -->
+<div id="toastBox" class="fixed bottom-6 right-6 z-50 transform translate-y-12 opacity-0 transition duration-300 pointer-events-none p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2 shadow-2xl">
+    <i id="toastIcon" class="w-5 h-5"></i>
+    <span id="toastText"></span>
+</div>
+
+<!-- Contenedor de Vistas -->
+<main class="flex-1 w-full max-w-6xl mx-auto p-4 md:p-8">
+    
+    <!-- ==================== VISTA: MESERO / SALÓN ==================== -->
+    <section id="view-waiter" class="app-view hidden flex flex-col gap-6">
+        <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-black text-[#002B30]">Distribución de Mesas</h2>
+                <p class="text-slate-500 text-sm">Gestiona la ocupación de mesas y toma comandas de los comensales.</p>
+            </div>
+            <button onclick="loadWaiterData()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B525B]/10 hover:bg-[#0B525B]/20 text-[#0B525B] font-bold text-sm transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refrescar Sala
+            </button>
+        </div>
+
+        <!-- Mapa de Mesas -->
+        <div id="tablesGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Renderizado dinámico de mesas -->
+        </div>
+    </section>
+
+    <!-- ==================== VISTA: COCINA ==================== -->
+    <section id="view-kitchen" class="app-view hidden flex flex-col gap-6">
+        <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-black text-[#002B30]">Monitor de Preparación</h2>
+                <p class="text-slate-500 text-sm">Gestiona y actualiza los tiempos de preparación de alimentos por estación.</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="loadKitchenData()" class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 transition text-slate-700 font-bold text-xs shadow-sm border border-slate-250 cursor-pointer">
+                    <i data-lucide="refresh-cw" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Refrescar Monitor
+                </button>
+            </div>
+        </div>
+
+        <!-- Lista de platillos en cocina -->
+        <div id="kitchenOrdersList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Platillos en cocina -->
+        </div>
+    </section>
+
+    <!-- ==================== VISTA: CAJA ==================== -->
+    <section id="view-cashier" class="app-view hidden flex flex-col gap-6">
+        <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-black text-[#002B30]">Terminal de Caja</h2>
+                <p class="text-slate-500 text-sm">Saldar consumos, abonos y calcular cuentas divididas consolidadas.</p>
+            </div>
+            <button onclick="loadCashierData()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0B525B]/10 hover:bg-[#0B525B]/20 text-[#0B525B] font-bold text-sm transition">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i> Refrescar Caja
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Cuentas Abiertas -->
+            <div class="lg:col-span-2 flex flex-col gap-4">
+                <h3 class="text-lg font-black text-[#002B30] flex items-center gap-2">
+                    <i data-lucide="receipt" class="w-5 h-5 text-[#0B525B]"></i> Cuentas Activas
+                </h3>
+                <div id="cashierAccountsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Renderizado dinámico de cuentas abiertas -->
+                </div>
+            </div>
+
+            <!-- Detalle de Cobro -->
+            <div id="cashierDetailsCol" class="glass-panel rounded-3xl p-6 shadow-md h-fit">
+                <!-- Se poblará dinámicamente al elegir una mesa de la izquierda -->
+                <div class="text-center py-12 border border-dashed border-slate-200 rounded-3xl bg-white/20">
+                    <p class="text-slate-400 text-sm font-semibold">Selecciona una mesa con comanda para cobrar.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== VISTA: ADMIN ==================== -->
+    <section id="view-admin" class="app-view hidden flex flex-col gap-6">
+        <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h2 class="text-2xl font-black text-[#002B30]">Administración General</h2>
+                <p class="text-slate-500 text-sm">Monitorea ingresos, gestiona personal, inventario y recetas del menú.</p>
+            </div>
+            <!-- Sub-navegación interna de Admin -->
+            <div class="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
+                <button onclick="switchAdminSubTab('metrics')" id="adminSubBtn-metrics" class="admin-sub-btn px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i data-lucide="line-chart" style="width: 14px; height: 14px; display: inline-block;"></i> Ventas
+                </button>
+                <button onclick="switchAdminSubTab('inventory')" id="adminSubBtn-inventory" class="admin-sub-btn px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i data-lucide="package" style="width: 14px; height: 14px; display: inline-block;"></i> Inventario
+                </button>
+                <button onclick="switchAdminSubTab('menu')" id="adminSubBtn-menu" class="admin-sub-btn px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i data-lucide="chef-hat" style="width: 14px; height: 14px; display: inline-block;"></i> Menú
+                </button>
+                <button onclick="switchAdminSubTab('staff')" id="adminSubBtn-staff" class="admin-sub-btn px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">
+                    <i data-lucide="users" style="width: 14px; height: 14px; display: inline-block;"></i> Personal/Mesas
+                </button>
+            </div>
+        </div>
+
+        <!-- 1. SUB-TAB: MÉTRICAS -->
+        <div id="adminPanel-metrics" class="admin-sub-panel hidden flex flex-col gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div class="glass-panel rounded-2xl p-6 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase">Ingresos de Hoy</span>
+                        <h4 id="adminStatsRevenue" class="text-3xl font-black text-[#0B525B] mt-1">$0.00</h4>
+                    </div>
+                    <div class="p-3 bg-[#0B525B]/10 rounded-2xl text-[#0B525B]"><i data-lucide="dollar-sign" class="w-8 h-8"></i></div>
+                </div>
+                <div class="glass-panel rounded-2xl p-6 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-slate-500 uppercase">Transacciones Totales</span>
+                        <h4 id="adminStatsCount" class="text-3xl font-black text-[#E8912E] mt-1">0</h4>
+                    </div>
+                    <div class="p-3 bg-[#E8912E]/10 rounded-2xl text-[#E8912E]"><i data-lucide="receipt" class="w-8 h-8"></i></div>
+                </div>
+            </div>
+
+            <!-- Top Ventas Semanal -->
+            <div class="glass-panel rounded-3xl p-6">
+                <h3 class="text-lg font-black text-[#002B30] mb-4 flex items-center gap-2">
+                    <i data-lucide="award" class="w-5 h-5 text-[#E8912E]"></i> Platillos Más Vendidos (7 días)
+                </h3>
+                <div id="adminTopDishesList" class="flex flex-col gap-3">
+                    <!-- Lista de platillos top -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. SUB-TAB: INVENTARIO -->
+        <div id="adminPanel-inventory" class="admin-sub-panel hidden grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="md:col-span-2 flex flex-col gap-4">
+                <h3 class="text-lg font-black text-[#002B30]">Inventario de Insumos</h3>
+                <div class="glass-panel rounded-3xl p-4 overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-200 text-slate-400 font-bold">
+                                <th class="py-2.5">Insumo</th>
+                                <th class="py-2.5">Stock Actual</th>
+                                <th class="py-2.5">Stock Mínimo</th>
+                                <th class="py-2.5 text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTableBody">
+                            <!-- Insumos en inventario -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Agregar Insumo -->
+            <div class="glass-panel rounded-3xl p-6 h-fit">
+                <h3 class="text-lg font-black text-[#002B30] mb-4 flex items-center gap-2">
+                    <i data-lucide="folder-plus" class="w-5 h-5 text-[#0B525B]"></i> Nuevo Insumo
+                </h3>
+                <form id="newIngredientForm" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre</label>
+                        <input type="text" id="ingName" placeholder="Ej. Camarón" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:ring-1 focus:ring-[#0B525B]/20 outline-none text-xs font-semibold" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Stock Inicial</label>
+                            <input type="number" step="any" id="ingStock" placeholder="50" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:ring-1 focus:ring-[#0B525B]/20 outline-none text-xs font-semibold" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Unidad</label>
+                            <select id="ingUnit" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:border-[#0B525B] focus:ring-1 focus:ring-[#0B525B]/20 outline-none text-xs font-bold text-slate-700">
+                                <option value="kg">kg (Kilogramos)</option>
+                                <option value="pieza">pieza (Unidades)</option>
+                                <option value="litro">litro (Litros)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Stock Mínimo (Alerta)</label>
+                        <input type="number" step="any" id="ingMinStock" placeholder="5" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:ring-1 focus:ring-[#0B525B]/20 outline-none text-xs font-semibold" required>
+                    </div>
+                    <button type="submit" class="w-full mt-2 py-2.5 bg-[#0B525B] hover:bg-[#0B525B]/90 text-white font-extrabold rounded-xl text-xs transition">
+                        Registrar Insumo
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 3. SUB-TAB: MENÚ Y RECETAS -->
+        <div id="adminPanel-menu" class="admin-sub-panel hidden grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Lista Platillos del Menú -->
+            <div class="md:col-span-2 flex flex-col gap-4">
+                <h3 class="text-lg font-black text-[#002B30]">Platillos en el Menú</h3>
+                <div id="adminMenuList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Platillos registrados -->
+                </div>
+            </div>
+
+            <!-- Nuevo Platillo Form -->
+            <div class="glass-panel rounded-3xl p-6 h-fit">
+                <h3 class="text-lg font-black text-[#002B30] mb-4 flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-[#0B525B]"></i> Nuevo Platillo
+                </h3>
+                <form id="newDishForm" class="flex flex-col gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Nombre</label>
+                        <input type="text" id="dishName" placeholder="Ej. Ceviche Especial" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:outline-none text-xs font-semibold" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Descripción</label>
+                        <textarea id="dishDesc" placeholder="Detalle del platillo..." class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:outline-none text-xs font-semibold h-16" required></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Precio ($)</label>
+                            <input type="number" id="dishPrice" placeholder="150" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] focus:outline-none text-xs font-semibold" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Categoría</label>
+                            <select id="dishCat" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:border-[#0B525B] focus:outline-none text-xs font-bold text-slate-700">
+                                <option value="Entradas">Entradas</option>
+                                <option value="Especialidades">Especialidades</option>
+                                <option value="Bebidas">Bebidas</option>
+                                <option value="Cocteles">Cocteles</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Constructor de Recetas -->
+                    <div class="border-t border-slate-100 pt-3">
+                        <label class="block text-xs font-black text-[#0B525B] uppercase mb-2">Receta / Insumos requeridos</label>
+                        <div id="recipeBuilderList" class="flex flex-col gap-2 max-h-40 overflow-y-auto mb-2 pr-1">
+                            <!-- Insumos para la receta -->
+                        </div>
+                    </div>
+
+                    <button type="submit" class="w-full mt-2 py-2.5 bg-[#0B525B] hover:bg-[#0B525B]/90 text-white font-extrabold rounded-xl text-xs transition">
+                        Crear Platillo
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. SUB-TAB: PERSONAL Y MESAS -->
+        <div id="adminPanel-staff" class="admin-sub-panel hidden grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Gestión de Personal -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col gap-4">
+                <h3 class="text-lg font-black text-[#002B30] flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-[#0B525B]"></i> Agregar Personal
+                </h3>
+                <form id="newStaffForm" class="flex flex-col gap-3 text-xs">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre Completo</label>
+                        <input type="text" id="staffName" placeholder="Ej. Juan Pérez" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] outline-none font-semibold" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Usuario único</label>
+                            <input type="text" id="staffUsername" placeholder="juan12" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] outline-none font-semibold" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Contraseña</label>
+                            <input type="password" id="staffPassword" placeholder="••••••••" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] outline-none font-semibold" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Rol / Puesto</label>
+                        <select id="staffRole" class="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white focus:border-[#0B525B] outline-none font-bold text-slate-700">
+                            <option value="Mesero">Mesero</option>
+                            <option value="Cocina">Cocinero (Cocina/Barra)</option>
+                            <option value="Cajero">Cajero</option>
+                            <option value="Gerente">Gerente</option>
+                            <option value="Admin">Administrador</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-[#0B525B] hover:bg-[#0B525B]/90 text-white font-extrabold rounded-xl transition mt-2">
+                        Registrar Empleado
+                    </button>
+                </form>
+
+                <!-- Listado de Personal -->
+                <div class="border-t border-slate-100 pt-4 mt-2">
+                    <h4 class="text-xs font-bold text-slate-600 uppercase mb-2">Empleados Registrados</h4>
+                    <div id="staffListGroup" class="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Personal -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gestión de Mesas -->
+            <div class="glass-panel rounded-3xl p-6 flex flex-col gap-4">
+                <h3 class="text-lg font-black text-[#002B30] flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-[#E8912E]"></i> Registrar Nueva Mesa
+                </h3>
+                <form id="newTableForm" class="flex flex-col gap-3 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Número de Mesa</label>
+                            <input type="number" id="tableNum" placeholder="7" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] outline-none font-semibold" required>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Capacidad (Pax)</label>
+                            <input type="number" id="tableCapacity" placeholder="4" class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:border-[#0B525B] outline-none font-semibold" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-[#E8912E] hover:bg-[#E8912E]/90 text-white font-extrabold rounded-xl transition mt-2">
+                        Agregar Mesa al Salón
+                    </button>
+                </form>
+
+                <!-- Listado de Mesas -->
+                <div class="border-t border-slate-100 pt-4 mt-2">
+                    <h4 class="text-xs font-bold text-slate-600 uppercase mb-2">Mesas en Sala</h4>
+                    <div id="tablesListGroup" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Mesas -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- ==================== MODALES Y DIÁLOGOS ==================== -->
+
+<!-- 1. MODAL: COMANDA MESERO -->
+<div id="waiterOrderModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white/95 w-full max-w-2xl rounded-3xl p-6 border border-slate-200/50 shadow-2xl flex flex-col max-h-[85vh]">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-4">
+            <h3 id="orderModalTitle" class="text-xl font-black text-[#002B30] flex items-center gap-1.5">
+                <i data-lucide="clipboard-list" class="w-5 h-5 text-[#0B525B]"></i> Tomar Comanda
+            </h3>
+            <button onclick="closeWaiterOrderModal()" class="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- Cuerpo del modal -->
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden">
+            <!-- Menú Izquierda -->
+            <div class="flex flex-col gap-3 overflow-hidden">
+                <!-- Filtros de categoría Menú -->
+                <div class="flex bg-slate-100 p-0.5 rounded-lg text-[10px] font-bold text-slate-600">
+                    <button onclick="setMenuCategoryFilter('Todos')" id="catBtn-all" class="flex-1 py-1 rounded transition bg-white shadow-sm text-slate-800">Todos</button>
+                    <button onclick="setMenuCategoryFilter('Entradas')" id="catBtn-ent" class="flex-1 py-1 rounded transition">Entradas</button>
+                    <button onclick="setMenuCategoryFilter('Especialidades')" id="catBtn-esp" class="flex-1 py-1 rounded transition">Especiales</button>
+                    <button onclick="setMenuCategoryFilter('Bebidas')" id="catBtn-bev" class="flex-1 py-1 rounded transition">Bebidas</button>
+                </div>
+                <!-- Listado interactivo de Menú -->
+                <div id="menuItemsGrid" class="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
+                    <!-- Platillos a elegir -->
+                </div>
+            </div>
+
+            <!-- Draft Comanda Derecha -->
+            <div class="flex flex-col gap-4 bg-slate-50 rounded-2xl p-4 border border-slate-100 overflow-hidden">
+                <h4 class="text-xs font-black text-slate-500 uppercase tracking-wider">Orden a Enviar</h4>
+                
+                <!-- Borrador comanda items -->
+                <div id="orderDraftList" class="flex-1 overflow-y-auto pr-1 flex flex-col gap-2 text-xs">
+                    <!-- Items seleccionados -->
+                </div>
+
+                <!-- Estatus Cocina / Consumido Anteriormente (si mesa ocupada) -->
+                <div id="consumidoAntesGroup" class="hidden border-t border-slate-200 pt-3">
+                    <h5 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2">Platos en Cocina (Estatus)</h5>
+                    <div id="consumidoAntesList" class="flex flex-col gap-1 max-h-24 overflow-y-auto text-[11px] pr-1">
+                        <!-- Platillos ordenados antes -->
+                    </div>
+                </div>
+
+                <!-- Botones y total -->
+                <div class="border-t border-slate-200 pt-3 flex flex-col gap-2 mt-auto">
+                    <div class="flex justify-between items-baseline">
+                        <span class="text-xs font-bold text-slate-600">Total Borrador:</span>
+                        <span id="draftTotalText" class="text-xl font-black text-[#0B525B] flex items-center gap-0.5">$0.00</span>
+                    </div>
+                    <button onclick="submitWaiterOrder()" class="w-full py-3 bg-[#0B525B] hover:bg-[#0B525B]/90 text-white font-extrabold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-1.5">
+                        <i data-lucide="send" class="w-4 h-4"></i> Enviar Comanda a Cocina
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts interactivos de la aplicación -->
+<script src="/static/js/app.js"></script>
+{% endblock %}

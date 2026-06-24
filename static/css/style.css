@@ -1,0 +1,87 @@
+/* Estilos Globales y de Marca - Marisquería El Tío Perro */
+
+:root {
+    --brand-primary: #0B525B;
+    --brand-secondary: #E8912E;
+    --brand-text: #2D3E4E;
+    --brand-header: #002B30;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, h4, .font-serif {
+    font-family: 'Outfit', 'Playfair Display', serif;
+}
+
+/* Glassmorphism Panel Utilities */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px 0 rgba(11, 82, 91, 0.05);
+}
+
+.glass-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px 0 rgba(11, 82, 91, 0.09);
+    border-color: rgba(232, 145, 46, 0.3);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(11, 82, 91, 0.25);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(11, 82, 91, 0.4);
+}
+
+/* Animations */
+.animate-spin-slow {
+    animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* PWA Splash screen & Native App Styling */
+@media all and (display-mode: standalone) {
+    body {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+}
+
+/* Clases de colores personalizadas para consistencia de marca */
+.bg-brand-primary { background-color: var(--brand-primary); }
+.text-brand-primary { color: var(--brand-primary); }
+.border-brand-primary { border-color: var(--brand-primary); }
+
+.bg-brand-secondary { background-color: var(--brand-secondary); }
+.text-brand-secondary { color: var(--brand-secondary); }
+
+.bg-brand-header { background-color: var(--brand-header); }
+.text-brand-header { color: var(--brand-header); }
+.border-brand-header { border-color: var(--brand-header); }
+
+.text-brand-text { color: var(--brand-text); }

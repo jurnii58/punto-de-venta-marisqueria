@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex-1 flex flex-col justify-center items-center p-4">
+    <div class="w-full max-w-md bg-white/70 backdrop-blur-md rounded-3xl p-8 border border-white/50 shadow-2xl transition duration-300">
+        <!-- Logo / Brand Header -->
+        <div class="flex flex-col items-center mb-8">
+            <div class="p-4 rounded-2xl bg-[#0B525B] text-white shadow-lg mb-4">
+                <i data-lucide="compass" class="w-10 h-10 animate-spin-slow"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-[#0B525B] text-center tracking-tight font-serif">
+                El Tío Perro
+            </h1>
+            <p class="text-xs text-slate-500 font-semibold tracking-wider uppercase mt-1">
+                Punto de Venta • Marisquería
+            </p>
+        </div>
+
+        <!-- Alert messages -->
+        <div id="alertBox" class="hidden mb-6 p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2">
+            <i id="alertIcon" class="w-4 h-4"></i>
+            <span id="alertText"></span>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="flex flex-col gap-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Usuario</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i data-lucide="user" class="w-4 h-4"></i>
+                    </span>
+                    <input 
+                        type="text" 
+                        id="username" 
+                        placeholder="Ingresa tu usuario" 
+                        class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 focus:border-[#0B525B] focus:ring-2 focus:ring-[#0B525B]/20 outline-none transition text-sm font-semibold text-slate-700 bg-white/50"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Contraseña</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+                        <i data-lucide="lock" class="w-4 h-4"></i>
+                    </span>
+                    <input 
+                        type="password" 
+                        id="password" 
+                        placeholder="••••••••" 
+                        class="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 focus:border-[#0B525B] focus:ring-2 focus:ring-[#0B525B]/20 outline-none transition text-sm font-semibold text-slate-700 bg-white/50"
+                        required
+                    >
+                </div>
+            </div>
+
+            <button 
+                type="submit" 
+                id="loginBtn" 
+                class="w-full py-3.5 rounded-2xl bg-[#0B525B] hover:bg-[#0B525B]/90 text-white font-extrabold text-sm shadow-md transition transform active:scale-98 cursor-pointer mt-2"
+            >
+                Iniciar Sesión
+            </button>
+        </form>
+
+        <!-- Quick Access panel -->
+        <div class="border-t border-slate-100 mt-8 pt-6">
+            <h3 class="text-xs font-black text-slate-500 uppercase tracking-wider mb-4 text-center">
+                Acceso Rápido (Demo)
+            </h3>
+            <div class="grid grid-cols-2 gap-2 text-xs font-bold text-slate-700">
+                <button type="button" onclick="quickLogin('admin', 'admin123')" class="py-2.5 px-3 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/50 cursor-pointer flex items-center justify-center gap-1.5 transition">
+                    <i data-lucide="shield" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Admin
+                </button>
+                <button type="button" onclick="quickLogin('gerente', 'gerente123')" class="py-2.5 px-3 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/50 cursor-pointer flex items-center justify-center gap-1.5 transition">
+                    <i data-lucide="briefcase" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Gerente
+                </button>
+                <button type="button" onclick="quickLogin('cajero', 'cajero123')" class="py-2.5 px-3 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/50 cursor-pointer flex items-center justify-center gap-1.5 transition">
+                    <i data-lucide="dollar-sign" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Cajero
+                </button>
+                <button type="button" onclick="quickLogin('mesero', 'mesero123')" class="py-2.5 px-3 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/50 cursor-pointer flex items-center justify-center gap-1.5 transition">
+                    <i data-lucide="clipboard-list" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Mesero
+                </button>
+                <button type="button" onclick="quickLogin('cocina', 'cocina123')" class="py-2.5 px-3 rounded-xl bg-slate-100/80 hover:bg-slate-200/80 border border-slate-200/50 cursor-pointer flex items-center justify-center gap-1.5 transition col-span-2">
+                    <i data-lucide="chef-hat" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> Cocinero
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Si ya existe token, redirigir al index directamente
+    if (localStorage.getItem('token')) {
+        window.location.href = '/';
+    }
+
+    const form = document.getElementById('loginForm');
+    const alertBox = document.getElementById('alertBox');
+    const alertIcon = document.getElementById('alertIcon');
+    const alertText = document.getElementById('alertText');
+    const loginBtn = document.getElementById('loginBtn');
+
+    function showAlert(text, type = 'error') {
+        alertBox.className = `mb-6 p-4 rounded-2xl border text-sm font-semibold flex items-center gap-2 ${
+            type === 'success' 
+                ? 'bg-emerald-50 border-emerald-250 text-emerald-700' 
+                : 'bg-rose-50 border-rose-250 text-rose-700'
+        }`;
+        alertIcon.setAttribute('data-lucide', type === 'success' ? 'check-circle' : 'alert-circle');
+        alertText.textContent = text;
+        alertBox.classList.remove('hidden');
+        lucide.createIcons();
+    }
+
+    async function handleLoginSubmit(usernameVal, passwordVal) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Iniciando sesión...';
+        alertBox.classList.add('hidden');
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: usernameVal, password: passwordVal })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                showAlert('¡Acceso concedido!', 'success');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 800);
+            } else {
+                showAlert(data.message || 'Credenciales incorrectas.');
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Iniciar Sesión';
+            }
+        } catch (err) {
+            console.error(err);
+            showAlert('Error al conectar con el servidor.');
+            loginBtn.disabled = false;
+            loginBtn.textContent = 'Iniciar Sesión';
+        }
+    }
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const u = document.getElementById('username').value;
+        const p = document.getElementById('password').value;
+        handleLoginSubmit(u, p);
+    });
+
+    function quickLogin(u, p) {
+        document.getElementById('username').value = u;
+        document.getElementById('password').value = p;
+        handleLoginSubmit(u, p);
+    }
+
+    // Inicializar iconos
+    lucide.createIcons();
+</script>
+{% endblock %}

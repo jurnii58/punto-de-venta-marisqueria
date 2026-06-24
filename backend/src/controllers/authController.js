@@ -2,7 +2,10 @@ import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 
 const signToken = (id) => {
-  const secret = process.env.JWT_SECRET || 'secret_marisqueria_tio_perro_dev_key';
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET no está definido. Configura la variable de entorno JWT_SECRET antes de iniciar la aplicación.');
+  }
   return jwt.sign({ id }, secret, {
     expiresIn: '8h' // El token expira tras la jornada laboral promedio
   });

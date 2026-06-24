@@ -2,7 +2,12 @@
 export function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
+      const getApiUrl = () => {
+        if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+        return `http://${window.location.hostname}:5000/api`;
+      };
+      const apiUrl = getApiUrl();
+      navigator.serviceWorker.register(`/sw.js?apiUrl=${encodeURIComponent(apiUrl)}`)
         .then((registration) => {
           console.log('PWA Service Worker registrado con éxito en el ámbito:', registration.scope);
 

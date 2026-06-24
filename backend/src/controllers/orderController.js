@@ -4,6 +4,7 @@ import MenuItem from '../models/MenuItem.js';
 import Ingredient from '../models/Ingredient.js';
 import Payment from '../models/Payment.js';
 import { printKitchenTicket } from '../services/printerService.js';
+import { getIo } from '../socket.js';
 
 // Crear una comanda (Order)
 export const createOrder = async (req, res) => {
@@ -112,6 +113,19 @@ export const createOrder = async (req, res) => {
       console.error('Error del servicio de impresión:', err.message);
     });
 
+    // Emitir actualización en tiempo real a clientes conectados
+    try {
+      const io = getIo();
+      if (io) {
+        const orders = await Order.find({ status: 'abierta' })
+          .populate('table')
+          .populate('items.menuItem');
+        io.emit('orders', orders.map(order => order.toObject()));
+      }
+    } catch (err) {
+      console.warn('No se pudo emitir evento socket de nueva comanda:', err.message);
+    }
+
     res.status(201).json({
       message: isNewOrder ? 'Comanda creada con éxito y enviada a cocina.' : 'Consumo añadido a la comanda de la mesa.',
       order: populatedOrder
@@ -200,8 +214,20 @@ export const updateItemStatus = async (req, res) => {
     const populated = await Order.findById(orderId)
       .populate('table')
       .populate('items.menuItem');
-
     res.json(populated);
+
+    // Emitir actualización en tiempo real tras cambiar estado de un platillo
+    try {
+      const io = getIo();
+      if (io) {
+        const orders = await Order.find({ status: 'abierta' })
+          .populate('table')
+          .populate('items.menuItem');
+        io.emit('orders', orders.map(order => order.toObject()));
+      }
+    } catch (err) {
+      console.warn('No se pudo emitir evento socket de actualización de platillo:', err.message);
+    }
   } catch (error) {
     res.status(500).json({ message: 'Error al actualizar el estado del platillo.', error: error.message });
   }
