@@ -1,9 +1,17 @@
 import datetime
+import io
 from functools import wraps
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, send_file
 import bcrypt
 import jwt
 from bson import ObjectId
+
+# PDF generation imports
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 
 from config import Config
 from database import (
@@ -54,6 +62,8 @@ def token_required(f):
             auth_header = request.headers["Authorization"]
             if auth_header.startswith("Bearer "):
                 token = auth_header.split(" ")[1]
+        elif "token" in request.args:
+            token = request.args.get("token")
         
         if not token:
             return jsonify({"message": "No estás autenticado. Por favor inicia sesión para acceder."}), 401
@@ -897,6 +907,361 @@ def get_dashboard_stats():
         },
         "weeklyTopDishes": top_dishes
     })
+
+
+# --- CANVAS DE PDF CON NUMERACIÓN DE PÁGINAS Y DISEÑO ---
+class NumberedCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pages = []
+
+    def showPage(self):
+        self.pages.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        page_count = len(self.pages)
+        for page in self.pages:
+            self.__dict__.update(page)
+            self.draw_header_footer(page_count)
+            super().showPage()
+        super().save()
+
+    def draw_header_footer(self, page_count):
+        self.saveState()
+        # Encabezado (Línea decorativa y títulos)
+        self.setFont("Helvetica-Bold", 8)
+        self.setFillColor(colors.HexColor("#475569"))
+        self.drawString(54, 755, "MARISQUERÍA EL TÍO PERRO")
+        self.drawRightString(558, 755, "REPORTE DE VENTAS OFICIAL")
+        self.setStrokeColor(colors.HexColor("#cbd5e1"))
+        self.setLineWidth(0.5)
+        self.line(54, 748, 558, 748)
+        
+        # Pie de página (Fecha de emisión y paginación)
+        self.setFont("Helvetica", 8)
+        self.setFillColor(colors.HexColor("#64748b"))
+        self.drawString(54, 30, f"Generado el: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        self.drawRightString(558, 30, f"Página {self._pageNumber} de {page_count}")
+        self.restoreState()
+
+
+@app.route('/api/dashboard/report/pdf', methods=['GET'])
+@token_required
+@roles_required('Admin')
+def generate_pdf_report():
+    period = request.args.get('period', 'weekly') # 'weekly' o 'monthly'
+    
+    # Calcular fechas del periodo
+    now = datetime.datetime.now()
+    if period == 'monthly':
+        start_date = datetime.datetime(now.year, now.month, now.day, 0, 0, 0) - datetime.timedelta(days=30)
+        period_title = "MENSUAL (ÚLTIMOS 30 DÍAS)"
+    else:
+        start_date = datetime.datetime(now.year, now.month, now.day, 0, 0, 0) - datetime.timedelta(days=7)
+        period_title = "SEMANAL (ÚLTIMOS 7 DÍAS)"
+    
+    end_date = datetime.datetime(now.year, now.month, now.day, 23, 59, 59, 999999)
+    
+    # --- CONSULTAS DE BASE DE DATOS ---
+    
+    # 1. Total Ventas y Transacciones
+    sales_data = list(payments_col.aggregate([
+        {
+            "$match": {
+                "createdAt": { "$gte": start_date, "$lte": end_date }
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "totalRevenue": { "$sum": "$amount" },
+                "transactionsCount": { "$sum": 1 }
+            }
+        }
+    ]))
+    
+    total_sales = sales_data[0]["totalRevenue"] if sales_data else 0.0
+    total_transactions = sales_data[0]["transactionsCount"] if sales_data else 0
+    avg_ticket = total_sales / total_transactions if total_transactions > 0 else 0.0
+    
+    # 2. Métodos de Pago
+    payment_methods = list(payments_col.aggregate([
+        {
+            "$match": {
+                "createdAt": { "$gte": start_date, "$lte": end_date }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$method",
+                "total": { "$sum": "$amount" },
+                "count": { "$sum": 1 }
+            }
+        },
+        { "$sort": { "total": -1 } }
+    ]))
+    
+    # 3. Ventas Diarias
+    sales_by_day = list(payments_col.aggregate([
+        {
+            "$match": {
+                "createdAt": { "$gte": start_date, "$lte": end_date }
+            }
+        },
+        {
+            "$group": {
+                "_id": { "$dateToString": { "format": "%Y-%m-%d", "date": "$createdAt" } },
+                "total": { "$sum": "$amount" },
+                "count": { "$sum": 1 }
+            }
+        },
+        { "$sort": { "_id": 1 } }
+    ]))
+    
+    # 4. Platillos Más Vendidos (Top 10)
+    top_dishes = list(orders_col.aggregate([
+        {
+            "$match": {
+                "createdAt": { "$gte": start_date, "$lte": end_date },
+                "status": { "$ne": "cancelada" }
+            }
+        },
+        { "$unwind": "$items" },
+        {
+            "$group": {
+                "_id": "$items.menuItem",
+                "quantitySold": { "$sum": "$items.quantity" },
+                "subtotal": { "$sum": { "$multiply": ["$items.price", "$items.quantity"] } }
+            }
+        },
+        { "$sort": { "quantitySold": -1 } },
+        { "$limit": 10 },
+        {
+            "$lookup": {
+                "from": "menuitems",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "details"
+            }
+        },
+        { "$unwind": "$details" },
+        {
+            "$project": {
+                "_id": {"$toString": "$_id"},
+                "quantitySold": 1,
+                "subtotal": 1,
+                "name": "$details.name",
+                "price": "$details.price",
+                "category": "$details.category"
+            }
+        }
+    ]))
+
+    # --- GENERACIÓN DEL ARCHIVO PDF ---
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=54,
+        rightMargin=54,
+        topMargin=72,
+        bottomMargin=72
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    
+    # Definición de estilos tipográficos con colores profesionales (Slate/Teal)
+    title_style = ParagraphStyle(
+        'RepTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=20,
+        textColor=colors.HexColor('#0f172a'),
+        spaceAfter=4
+    )
+    subtitle_style = ParagraphStyle(
+        'RepSubtitle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=10,
+        textColor=colors.HexColor('#64748b'),
+        spaceAfter=15
+    )
+    heading_style = ParagraphStyle(
+        'SecHeading',
+        parent=styles['Heading2'],
+        fontName='Helvetica-Bold',
+        fontSize=12,
+        textColor=colors.HexColor('#0f172a'),
+        spaceBefore=12,
+        spaceAfter=6,
+        keepWithNext=True
+    )
+    cell_style = ParagraphStyle(
+        'TabCell',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=8.5,
+        textColor=colors.HexColor('#334155')
+    )
+    cell_header_style = ParagraphStyle(
+        'TabHeaderCell',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=8.5,
+        textColor=colors.white
+    )
+    metric_lbl_style = ParagraphStyle(
+        'MetLbl',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        textColor=colors.HexColor('#475569')
+    )
+    metric_val_style = ParagraphStyle(
+        'MetVal',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        textColor=colors.HexColor('#0d9488')
+    )
+    
+    # 1. Título
+    story.append(Paragraph("Reporte de Ventas POS", title_style))
+    date_range_str = f"Periodo: {period_title} | Del {start_date.strftime('%d/%m/%Y')} al {end_date.strftime('%d/%m/%Y')}"
+    story.append(Paragraph(date_range_str, subtitle_style))
+    
+    # 2. Resumen de Métricas (Tarjetas)
+    metric_data = [
+        [
+            Paragraph("VENTAS TOTALES", metric_lbl_style),
+            Paragraph("TRANSACCIONES", metric_lbl_style),
+            Paragraph("TICKET PROMEDIO", metric_lbl_style)
+        ],
+        [
+            Paragraph(f"${total_sales:,.2f} MXN", metric_val_style),
+            Paragraph(f"{total_transactions}", metric_val_style),
+            Paragraph(f"${avg_ticket:,.2f} MXN", metric_val_style)
+        ]
+    ]
+    metric_table = Table(metric_data, colWidths=[168, 168, 168])
+    metric_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('PADDING', (0,0), (-1,-1), 10),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(metric_table)
+    story.append(Spacer(1, 10))
+    
+    # 3. Métodos de Pago
+    story.append(Paragraph("Resumen por Método de Pago", heading_style))
+    pay_table_data = [[
+        Paragraph("Método", cell_header_style),
+        Paragraph("Monto Recaudado", cell_header_style),
+        Paragraph("Transacciones", cell_header_style),
+        Paragraph("Porcentaje", cell_header_style)
+    ]]
+    for p in payment_methods:
+        pct = (p['total'] / total_sales * 100) if total_sales > 0 else 0.0
+        method_name = str(p['_id']).capitalize()
+        if method_name == 'Efectivo':
+            method_name = "💸 Efectivo"
+        elif method_name == 'Tarjeta':
+            method_name = "💳 Tarjeta Bancaria"
+        elif method_name == 'Transferencia':
+            method_name = "🏦 Transferencia"
+            
+        pay_table_data.append([
+            Paragraph(method_name, cell_style),
+            Paragraph(f"${p['total']:,.2f} MXN", cell_style),
+            Paragraph(str(p['count']), cell_style),
+            Paragraph(f"{pct:.1f}%", cell_style)
+        ])
+        
+    pay_table = Table(pay_table_data, colWidths=[150, 130, 110, 114])
+    pay_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('PADDING', (0,0), (-1,-1), 6),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(pay_table)
+    story.append(Spacer(1, 10))
+    
+    # 4. Platillos Más Vendidos (Top 10)
+    story.append(Paragraph("Top 10 Platillos más Vendidos", heading_style))
+    dishes_table_data = [[
+        Paragraph("#", cell_header_style),
+        Paragraph("Platillo", cell_header_style),
+        Paragraph("Categoría", cell_header_style),
+        Paragraph("Cant.", cell_header_style),
+        Paragraph("Precio Unit.", cell_header_style),
+        Paragraph("Total Recaudado", cell_header_style)
+    ]]
+    for idx, d in enumerate(top_dishes):
+        dishes_table_data.append([
+            Paragraph(str(idx + 1), cell_style),
+            Paragraph(d['name'], cell_style),
+            Paragraph(d['category'].capitalize(), cell_style),
+            Paragraph(str(d['quantitySold']), cell_style),
+            Paragraph(f"${d['price']:,.2f}", cell_style),
+            Paragraph(f"${d['subtotal']:,.2f}", cell_style)
+        ])
+        
+    dishes_table = Table(dishes_table_data, colWidths=[24, 156, 90, 70, 74, 90])
+    dishes_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(dishes_table)
+    story.append(Spacer(1, 10))
+    
+    # 5. Ventas Diarias
+    story.append(Paragraph("Desglose Diario de Ventas", heading_style))
+    days_table_data = [[
+        Paragraph("Fecha", cell_header_style),
+        Paragraph("Transacciones", cell_header_style),
+        Paragraph("Total Recaudado", cell_header_style)
+    ]]
+    for day in sales_by_day:
+        f_date = datetime.datetime.strptime(day['_id'], '%Y-%m-%d').strftime('%d/%m/%Y')
+        days_table_data.append([
+            Paragraph(f_date, cell_style),
+            Paragraph(str(day['count']), cell_style),
+            Paragraph(f"${day['total']:,.2f} MXN", cell_style)
+        ])
+        
+    days_table = Table(days_table_data, colWidths=[150, 150, 204])
+    days_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('PADDING', (0,0), (-1,-1), 5),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(days_table)
+    
+    # Construir documento
+    doc.build(story, canvasmaker=NumberedCanvas)
+    buffer.seek(0)
+    
+    filename = f"reporte_ventas_{period}_{now.strftime('%Y%m%d')}.pdf"
+    return send_file(
+        buffer,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=filename
+    )
+
 
 # --- EJECUCIÓN DEL SERVIDOR ---
 

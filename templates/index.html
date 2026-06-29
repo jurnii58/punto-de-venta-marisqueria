@@ -169,6 +169,22 @@
                     <!-- Lista de platillos top -->
                 </div>
             </div>
+
+            <!-- Reportes de Ventas PDF -->
+            <div class="glass-panel rounded-3xl p-6">
+                <h3 class="text-lg font-black text-[#002B30] mb-4 flex items-center gap-2">
+                    <i data-lucide="clipboard-list" class="w-5 h-5 text-[#0B525B]"></i> Generar Reportes de Ventas (PDF)
+                </h3>
+                <p class="text-xs text-slate-500 mb-4">Exporta un reporte de ventas detallado en formato PDF con el resumen de ingresos, métodos de pago y desglose de productos.</p>
+                <div class="flex flex-wrap gap-4">
+                    <button onclick="downloadSalesReport('weekly')" class="px-4 py-2.5 bg-[#0B525B] text-white rounded-xl font-bold text-sm hover:bg-[#002B30] transition flex items-center gap-2 shadow-sm cursor-pointer">
+                        <i data-lucide="download" class="w-4 h-4"></i> Descargar Reporte Semanal
+                    </button>
+                    <button onclick="downloadSalesReport('monthly')" class="px-4 py-2.5 bg-[#E8912E] text-white rounded-xl font-bold text-sm hover:bg-[#c97820] transition flex items-center gap-2 shadow-sm cursor-pointer">
+                        <i data-lucide="download" class="w-4 h-4"></i> Descargar Reporte Mensual
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- 2. SUB-TAB: INVENTARIO -->

@@ -1714,6 +1714,21 @@ if (tableForm) {
     };
 }
 
+// Descargar reporte de ventas en PDF (Semanal / Mensual)
+function downloadSalesReport(period) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('No estás autenticado.', 'error');
+        return;
+    }
+    
+    showToast('Generando reporte PDF...', 'success');
+    
+    // Abrir la descarga directa en una nueva pestaña
+    const url = `/api/dashboard/report/pdf?period=${period}&token=${encodeURIComponent(token)}`;
+    window.open(url, '_blank');
+}
+
 // --- ARRANQUE DE LA APLICACIÓN ---
 
 document.addEventListener('DOMContentLoaded', () => {
