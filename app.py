@@ -933,9 +933,13 @@ class NumberedCanvas(canvas.Canvas):
         self.setFont("Helvetica-Bold", 8)
         self.setFillColor(colors.HexColor("#475569"))
         self.drawString(54, 755, "MARISQUERÍA EL TÍO PERRO")
-        self.drawRightString(558, 755, "REPORTE DE VENTAS OFICIAL")
-        self.setStrokeColor(colors.HexColor("#cbd5e1"))
-        self.setLineWidth(0.5)
+        
+        report_period = getattr(self, 'report_period', 'REPORTE OFICIAL')
+        self.drawRightString(558, 755, f"REPORTE DE VENTAS - {report_period}")
+        
+        primary_color = getattr(self, 'primary_color', colors.HexColor("#cbd5e1"))
+        self.setStrokeColor(primary_color)
+        self.setLineWidth(1)
         self.line(54, 748, 558, 748)
         
         # Pie de página (Fecha de emisión y paginación)
@@ -952,14 +956,24 @@ class NumberedCanvas(canvas.Canvas):
 def generate_pdf_report():
     period = request.args.get('period', 'weekly') # 'weekly' o 'monthly'
     
-    # Calcular fechas del periodo
+    # Calcular fechas del periodo y establecer colores del tema correspondientes
     now = datetime.datetime.now()
     if period == 'monthly':
         start_date = datetime.datetime(now.year, now.month, now.day, 0, 0, 0) - datetime.timedelta(days=30)
         period_title = "MENSUAL (ÚLTIMOS 30 DÍAS)"
+        report_title_text = "Reporte Mensual de Ventas"
+        primary_color = colors.HexColor('#d97706') # Amber / Naranja
+        header_bg_color = colors.HexColor('#78350f') # Amber Oscuro
+        table_border_color = colors.HexColor('#fde68a') # Amber Claro
+        row_alt_color = colors.HexColor('#fffbeb') # Fondo alterno cálido
     else:
         start_date = datetime.datetime(now.year, now.month, now.day, 0, 0, 0) - datetime.timedelta(days=7)
         period_title = "SEMANAL (ÚLTIMOS 7 DÍAS)"
+        report_title_text = "Reporte Semanal de Ventas"
+        primary_color = colors.HexColor('#0d9488') # Teal / Verde
+        header_bg_color = colors.HexColor('#115e59') # Teal Oscuro
+        table_border_color = colors.HexColor('#99f6e4') # Teal Claro
+        row_alt_color = colors.HexColor('#f0fdfa') # Fondo alterno frío
     
     end_date = datetime.datetime(now.year, now.month, now.day, 23, 59, 59, 999999)
     
@@ -1072,31 +1086,36 @@ def generate_pdf_report():
     story = []
     styles = getSampleStyleSheet()
     
-    # Definición de estilos tipográficos con colores profesionales (Slate/Teal)
+    # Definición de estilos tipográficos con colores profesionales (con leading adecuado para evitar solapamientos)
     title_style = ParagraphStyle(
         'RepTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=20,
+        fontSize=22,
+        leading=26,
         textColor=colors.HexColor('#0f172a'),
-        spaceAfter=4
+        alignment=1, # Centrado
+        spaceAfter=6
     )
     subtitle_style = ParagraphStyle(
         'RepSubtitle',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName='Helvetica-Bold',
         fontSize=10,
-        textColor=colors.HexColor('#64748b'),
-        spaceAfter=15
+        leading=14,
+        textColor=colors.HexColor('#475569'),
+        alignment=1, # Centrado
+        spaceAfter=25
     )
     heading_style = ParagraphStyle(
         'SecHeading',
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
         fontSize=12,
+        leading=16,
         textColor=colors.HexColor('#0f172a'),
-        spaceBefore=12,
-        spaceAfter=6,
+        spaceBefore=16,
+        spaceAfter=8,
         keepWithNext=True
     )
     cell_style = ParagraphStyle(
@@ -1104,6 +1123,7 @@ def generate_pdf_report():
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=8.5,
+        leading=11,
         textColor=colors.HexColor('#334155')
     )
     cell_header_style = ParagraphStyle(
@@ -1111,6 +1131,7 @@ def generate_pdf_report():
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
         fontSize=8.5,
+        leading=11,
         textColor=colors.white
     )
     metric_lbl_style = ParagraphStyle(
@@ -1118,6 +1139,7 @@ def generate_pdf_report():
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
         fontSize=9,
+        leading=12,
         textColor=colors.HexColor('#475569')
     )
     metric_val_style = ParagraphStyle(
@@ -1125,15 +1147,17 @@ def generate_pdf_report():
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
         fontSize=14,
-        textColor=colors.HexColor('#0d9488')
+        leading=18,
+        textColor=primary_color # Usa el color principal del tema
     )
     
-    # 1. Título
-    story.append(Paragraph("Reporte de Ventas POS", title_style))
+    # 1. Título y Subtítulo Centrados
+    story.append(Paragraph(report_title_text, title_style))
     date_range_str = f"Periodo: {period_title} | Del {start_date.strftime('%d/%m/%Y')} al {end_date.strftime('%d/%m/%Y')}"
     story.append(Paragraph(date_range_str, subtitle_style))
+    story.append(Spacer(1, 10))
     
-    # 2. Resumen de Métricas (Tarjetas)
+    # 2. Resumen de Métricas (Tarjetas) con bordes del color del tema
     metric_data = [
         [
             Paragraph("VENTAS TOTALES", metric_lbl_style),
@@ -1148,15 +1172,15 @@ def generate_pdf_report():
     ]
     metric_table = Table(metric_data, colWidths=[168, 168, 168])
     metric_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0,0), (-1,-1), row_alt_color),
+        ('BOX', (0,0), (-1,-1), 1, primary_color),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, table_border_color),
         ('PADDING', (0,0), (-1,-1), 10),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(metric_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 12))
     
     # 3. Métodos de Pago
     story.append(Paragraph("Resumen por Método de Pago", heading_style))
@@ -1185,14 +1209,14 @@ def generate_pdf_report():
         
     pay_table = Table(pay_table_data, colWidths=[150, 130, 110, 114])
     pay_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('BACKGROUND', (0,0), (-1,0), header_bg_color),
         ('PADDING', (0,0), (-1,-1), 6),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, row_alt_color]),
+        ('GRID', (0,0), (-1,-1), 0.5, table_border_color),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(pay_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 12))
     
     # 4. Platillos Más Vendidos (Top 10)
     story.append(Paragraph("Top 10 Platillos más Vendidos", heading_style))
@@ -1216,14 +1240,14 @@ def generate_pdf_report():
         
     dishes_table = Table(dishes_table_data, colWidths=[24, 156, 90, 70, 74, 90])
     dishes_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('BACKGROUND', (0,0), (-1,0), header_bg_color),
         ('PADDING', (0,0), (-1,-1), 5),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, row_alt_color]),
+        ('GRID', (0,0), (-1,-1), 0.5, table_border_color),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(dishes_table)
-    story.append(Spacer(1, 10))
+    story.append(Spacer(1, 12))
     
     # 5. Ventas Diarias
     story.append(Paragraph("Desglose Diario de Ventas", heading_style))
@@ -1242,16 +1266,23 @@ def generate_pdf_report():
         
     days_table = Table(days_table_data, colWidths=[150, 150, 204])
     days_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0f172a')),
+        ('BACKGROUND', (0,0), (-1,0), header_bg_color),
         ('PADDING', (0,0), (-1,-1), 5),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f8fafc')]),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, row_alt_color]),
+        ('GRID', (0,0), (-1,-1), 0.5, table_border_color),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
     ]))
     story.append(days_table)
     
+    # Creador de canvas dinámico para pasar parámetros con seguridad y evitar colisiones de hilos
+    def canvas_builder(*args, **kwargs):
+        canvas_obj = NumberedCanvas(*args, **kwargs)
+        canvas_obj.primary_color = primary_color
+        canvas_obj.report_period = period_title
+        return canvas_obj
+
     # Construir documento
-    doc.build(story, canvasmaker=NumberedCanvas)
+    doc.build(story, canvasmaker=canvas_builder)
     buffer.seek(0)
     
     filename = f"reporte_ventas_{period}_{now.strftime('%Y%m%d')}.pdf"
