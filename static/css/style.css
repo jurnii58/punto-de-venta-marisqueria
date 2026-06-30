@@ -85,3 +85,18 @@ h1, h2, h3, h4, .font-serif {
 .border-brand-header { border-color: var(--brand-header); }
 
 .text-brand-text { color: var(--brand-text); }
+
+/* Soporte para iPhone X / notched devices (Safe Areas) */
+header {
+    padding-top: calc(1rem + env(safe-area-inset-top)) !important;
+}
+
+#toastBox {
+    bottom: calc(1.5rem + env(safe-area-inset-bottom)) !important;
+}
+
+/* Evitar el rebote elástico de scroll (rubber-banding) en iOS Safari */
+html, body {
+    overscroll-behavior-y: none;
+}
+
